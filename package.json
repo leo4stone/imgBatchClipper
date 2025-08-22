@@ -1,0 +1,43 @@
+{
+  "name": "imagemagickviewer",
+  "version": "1.0.0",
+  "description": "一个基于Electron和Vue.js的图片查看器应用",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build": "echo '构建功能待实现'",
+    "pack": "electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "vue",
+    "image",
+    "viewer"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "@electron/remote": "^2.1.3",
+    "canvas": "^2.11.2",
+    "gm": "^1.25.0",
+    "imagemagick": "^0.1.3",
+    "sharp": "^0.32.6",
+    "vue": "^3.3.4"
+  },
+  "build": {
+    "appId": "com.example.imagemagickviewer",
+    "productName": "ImageMagick Viewer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*"
+    ]
+  }
+}

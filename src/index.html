@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImageMagick 批量图片裁剪工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 主要内容区域 */
+        .main-content {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* 左侧面板 - 文件列表 */
+        .left-panel {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .app-logo {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .app-logo .logo-icon {
+            font-size: 24px;
+            margin-right: 10px;
+        }
+
+        .app-logo .logo-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .file-selection-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            flex: 1;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: center;
+            transition: background 0.3s ease;
+        }
+
+        .file-button:hover {
+            background: #0056b3;
+        }
+
+
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .icon-btn:hover {
+            background: #f0f0f0;
+            border-color: #007bff;
+        }
+
+        .icon-btn.danger:hover {
+            background: #fff5f5;
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .file-item:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+        }
+
+        .file-item.selected {
+            background: #e3f2fd;
+            border-color: #007bff;
+        }
+
+        .file-item .file-info {
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        .file-name {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .file-thumbnail {
+            width: 40px;
+            height: 40px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        /* 中间面板 - 图片预览 */
+        .center-panel {
+            flex: 1;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .preview-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #fafafa;
+            min-height: 300px;
+        }
+
+        .preview-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background: white;
+        }
+
+        .preview-image {
+            display: block;
+            max-width: none;
+            max-height: none;
+            cursor: crosshair;
+            user-select: none;
+        }
+
+        .crop-overlay {
+            position: absolute;
+            border: 2px solid #007bff;
+            background: rgba(0, 123, 255, 0.15);
+            pointer-events: none;
+            display: none;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .crop-overlay::after {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+        }
+
+        .no-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 20;
+        }
+
+        .zoom-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #f0f0f0;
+            border-color: #007bff;
+        }
+
+        .zoom-info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+            z-index: 20;
+        }
+
+        .debug-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 20;
+        }
+
+        /* 右侧面板 - 裁剪参数 */
+        .right-panel {
+            width: 300px;
+            background: white;
+            border-left: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .params-form {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .output-settings-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .output-settings-row .form-input {
+            flex: 1;
+        }
+
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #f0f0f0;
+        }
+
+        .btn.primary {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .btn.primary:hover {
+            background: #0056b3;
+        }
+
+        .btn:disabled {
+            background: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn.secondary {
+            background: #6c757d;
+            color: white;
+            border-color: #6c757d;
+        }
+
+        .btn.secondary:hover {
+            background: #545b62;
+        }
+
+        /* Tooltip增强 */
+        .icon-btn[title]:hover:after {
+            content: attr(title);
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .icon-btn {
+            position: relative;
+        }
+
+        .progress-container {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            margin-top: auto;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #0056b3);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+
+        .status-messages {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .status-message {
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #b6d4db;
+        }
+
+        /* 允许文本选择和复制 */
+        .status-messages, 
+        .status-message,
+        .file-name,
+        .progress-text,
+        .panel-title {
+            user-select: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+        }
+
+        /* 允许输入框选择 */
+        .form-input {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        /* 保持按钮不可选择 */
+        .btn, .file-button {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <!-- 左侧面板 - 文件选择 -->
+            <div class="left-panel">
+                <div class="panel-header">
+                    <!-- 应用Logo -->
+                    <div class="app-logo">
+                        <div class="logo-icon">🖼️</div>
+                        <div class="logo-text">ImageMagick</div>
+                    </div>
+                    
+                    <div class="panel-title">选择图片文件</div>
+                    <div class="file-selection-row">
+                        <div class="file-input-wrapper">
+                            <input type="file" 
+                                   class="file-input" 
+                                   id="fileInput" 
+                                   multiple 
+                                   accept="image/*"
+                                   @change="handleFileSelect">
+                            <label for="fileInput" class="file-button">
+                                📁 选择图片文件
+                            </label>
+                        </div>
+                        <button class="icon-btn danger" @click="clearAll" title="清空所有文件">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="file-list">
+                    <div v-if="selectedFiles.length === 0" class="no-image">
+                        <p>还没有选择图片文件</p>
+                        <p style="font-size: 12px; margin-top: 10px; color: #999;">
+                            支持 JPG, PNG, GIF, BMP 等格式
+                        </p>
+                    </div>
+                    
+                    <div v-for="(file, index) in selectedFiles" 
+                         :key="index"
+                         class="file-item"
+                         :class="{ selected: currentFileIndex === index }"
+                         @click="selectFile(index)">
+                        <div class="file-thumbnail">🖼️</div>
+                        <div class="file-info">
+                            <div class="file-name">{{ file.name }}</div>
+                            <div class="file-size">{{ formatFileSize(file.size) }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中间面板 - 图片预览 -->
+            <div class="center-panel">
+                <div class="preview-container" ref="previewContainer">
+                    <!-- 无图片提示 -->
+                    <div v-if="!currentImage" class="no-image">
+                        <p>请先选择图片文件</p>
+                        <p style="font-size: 14px; margin-top: 10px; color: #999;">
+                            图片将在这里显示，您可以通过拖拽设置裁剪区域
+                        </p>
+                    </div>
+                    
+                    <!-- 图片预览区域 -->
+                    <div v-else class="preview-wrapper" 
+                         ref="previewWrapper"
+                         :style="previewWrapperStyle"
+                         @mousedown="startCrop"
+                         @mousemove="updateCrop"
+                         @mouseup="endCrop"
+                         @mouseleave="endCrop">
+                        
+                        <img :src="currentImage.url" 
+                             class="preview-image" 
+                             ref="previewImage"
+                             :style="previewImageStyle"
+                             @load="onImageLoad"
+                             @dragstart="$event.preventDefault()">
+                        
+                        <!-- 裁剪覆盖层 -->
+                        <div class="crop-overlay" 
+                             ref="cropOverlay"
+                             :style="cropOverlayStyle"></div>
+                    </div>
+                    
+                    <!-- 缩放控制 -->
+                    <div v-if="currentImage" class="zoom-controls">
+                        <button class="zoom-btn" @click="zoomOut" title="缩小">−</button>
+                        <button class="zoom-btn" @click="resetZoom" title="重置">⌂</button>
+                        <button class="zoom-btn" @click="zoomIn" title="放大">+</button>
+                        <button class="zoom-btn" @click="fitToWindow" title="适应窗口">⬛</button>
+                    </div>
+                    
+                    <!-- 缩放信息 -->
+                    <div v-if="currentImage" class="zoom-info">
+                        {{ Math.round(imageScale * 100) }}% | {{ displayWidth }}×{{ displayHeight }}
+                    </div>
+                    
+                    <!-- 调试按钮 -->
+                    <div v-if="currentImage" class="debug-controls">
+                        <button class="zoom-btn" @click="forceRefreshDisplay" title="强制刷新显示">
+                            🔄
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧面板 - 裁剪参数 -->
+            <div class="right-panel">
+                <div class="params-form">
+                    <div class="form-group">
+                        <label class="form-label">裁剪参数</label>
+                        <div class="input-group">
+                            <div>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">X坐标</label>
+                                <input type="number" 
+                                       class="form-input" 
+                                       v-model.number="cropParams.x"
+                                       @input="updateCropOverlay"
+                                       min="0">
+                            </div>
+                            <div>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">Y坐标</label>
+                                <input type="number" 
+                                       class="form-input" 
+                                       v-model.number="cropParams.y"
+                                       @input="updateCropOverlay"
+                                       min="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="input-group">
+                            <div>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">宽度</label>
+                                <input type="number" 
+                                       class="form-input" 
+                                       v-model.number="cropParams.width"
+                                       @input="updateCropOverlay"
+                                       min="1">
+                            </div>
+                            <div>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">高度</label>
+                                <input type="number" 
+                                       class="form-input" 
+                                       v-model.number="cropParams.height"
+                                       @input="updateCropOverlay"
+                                       min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">输出设置</label>
+                        <div class="output-settings-row">
+                            <input type="text" 
+                                   class="form-input" 
+                                   v-model="outputSuffix"
+                                   placeholder="输出文件后缀 (例如: _cropped)">
+                            <button class="icon-btn" @click="openOutputFolder" title="打开输出文件夹">
+                                📁
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">当前图片信息</label>
+                        <div v-if="currentImage" style="font-size: 12px; color: #666;">
+                            <div>尺寸: {{ currentImage.width }} × {{ currentImage.height }}</div>
+                            <div>文件: {{ currentImage.name }}</div>
+                        </div>
+                        <div v-else style="font-size: 12px; color: #999;">
+                            未选择图片
+                        </div>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="action-buttons">
+                        <button class="btn primary" @click="startBatchCrop" :disabled="!canStartCrop">
+                            <span>{{ isProcessing ? '🔄' : '✂️' }}</span>
+                            {{ isProcessing ? '处理中...' : '开始批量裁剪' }}
+                        </button>
+                        
+                        <button class="btn secondary" @click="resetCropToCenter" v-if="currentImage">
+                            <span>↻</span>
+                            重置裁剪区域
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 进度显示 -->
+                <div class="progress-container">
+                    <div class="form-group">
+                        <label class="form-label">处理进度</label>
+                        <div class="progress-bar">
+                            <div class="progress-fill" :style="{ width: progress + '%' }"></div>
+                        </div>
+                        <div class="progress-text">{{ progressText }}</div>
+                    </div>
+
+                    <div class="status-messages" ref="statusMessages">
+                        <div v-for="(message, index) in statusMessages" 
+                             :key="index"
+                             :class="`status-message status-${message.type}`">
+                            {{ message.text }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入Vue.js -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- 引入模块 -->
+    <script src="cropCalculator.js"></script>
+    <script src="imageDisplayManager.js"></script>
+    <script src="cropInteractionHandler.js"></script>
+    <script src="fileManager.js"></script>
+    
+    <!-- 引入主应用 -->
+    <script src="app.js"></script>
+</body>
+</html>
