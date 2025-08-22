@@ -8,6 +8,12 @@ class ImageDisplayManager {
     this.displayWidth = 0
     this.displayHeight = 0
     this.maxDisplaySize = 800
+    // transform相关属性
+    this.transformScale = 1
+    this.transformOriginX = 50  // 百分比
+    this.transformOriginY = 50  // 百分比
+    this.translateX = 0
+    this.translateY = 0
   }
   
   /**
@@ -106,6 +112,101 @@ class ImageDisplayManager {
   setDisplaySize(width, height) {
     this.displayWidth = width
     this.displayHeight = height
+  }
+  
+  /**
+   * 基于鼠标位置进行滚轮缩放
+   * @param {number} scaleFactor - 缩放因子
+   * @param {number} mouseX - 鼠标X坐标（相对于图片容器）
+   * @param {number} mouseY - 鼠标Y坐标（相对于图片容器）
+   * @param {number} containerWidth - 容器宽度
+   * @param {number} containerHeight - 容器高度
+   * @returns {Object} 新的transform状态
+   */
+  wheelZoomAtPoint(scaleFactor, mouseX, mouseY, containerWidth, containerHeight) {
+    const minScale = 0.1
+    const maxScale = 5
+    
+    // 计算新的缩放值
+    const newTransformScale = Math.max(minScale, Math.min(this.transformScale * scaleFactor, maxScale))
+    
+    if (newTransformScale === this.transformScale) {
+      // 缩放值没有改变，直接返回当前状态
+      return this.getTransformState()
+    }
+    
+    // 计算鼠标位置相对于图片的百分比
+    const mousePercentX = (mouseX / this.displayWidth) * 100
+    const mousePercentY = (mouseY / this.displayHeight) * 100
+    
+    // 计算缩放前后鼠标位置的变化
+    const scaleChange = newTransformScale / this.transformScale
+    
+    // 使用transform-origin和translate来实现以鼠标位置为中心的缩放
+    // 设置transform-origin为鼠标位置
+    this.transformOriginX = Math.max(0, Math.min(mousePercentX, 100))
+    this.transformOriginY = Math.max(0, Math.min(mousePercentY, 100))
+    
+    // 更新缩放值
+    this.transformScale = newTransformScale
+    
+    console.log('滚轮缩放:', {
+      scaleFactor,
+      newScale: this.transformScale,
+      mousePercent: { x: this.transformOriginX, y: this.transformOriginY },
+      mouse: { x: mouseX, y: mouseY }
+    })
+    
+    return this.getTransformState()
+  }
+  
+  /**
+   * 按钮缩放（重置transform-origin到中心）
+   * @param {number} scaleFactor - 缩放因子
+   * @returns {Object} 新的transform状态
+   */
+  buttonZoom(scaleFactor) {
+    const minScale = 0.1
+    const maxScale = 5
+    
+    // 重置到中心缩放
+    this.transformOriginX = 50
+    this.transformOriginY = 50
+    this.translateX = 0
+    this.translateY = 0
+    
+    // 计算新的缩放值
+    this.transformScale = Math.max(minScale, Math.min(this.transformScale * scaleFactor, maxScale))
+    
+    return this.getTransformState()
+  }
+  
+  /**
+   * 重置所有transform状态
+   */
+  resetTransform() {
+    this.transformScale = 1
+    this.transformOriginX = 50
+    this.transformOriginY = 50
+    this.translateX = 0
+    this.translateY = 0
+    return this.getTransformState()
+  }
+  
+  /**
+   * 获取当前的transform状态
+   * @returns {Object} transform相关的所有状态
+   */
+  getTransformState() {
+    return {
+      scale: this.transformScale,
+      originX: this.transformOriginX,
+      originY: this.transformOriginY,
+      translateX: this.translateX,
+      translateY: this.translateY,
+      transformStyle: `scale(${this.transformScale}) translate(${this.translateX}px, ${this.translateY}px)`,
+      transformOriginStyle: `${this.transformOriginX}% ${this.transformOriginY}%`
+    }
   }
 }
 

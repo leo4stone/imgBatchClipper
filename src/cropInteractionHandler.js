@@ -14,8 +14,8 @@ class CropInteractionHandler {
   
   /**
    * 检测鼠标位置相对于裁剪区域的状态
-   * @param {number} mouseX - 鼠标X坐标（相对于图片）
-   * @param {number} mouseY - 鼠标Y坐标（相对于图片）
+   * @param {number} mouseX - 鼠标X坐标（相对于预览容器）
+   * @param {number} mouseY - 鼠标Y坐标（相对于预览容器）
    * @param {Object} cropParams - 裁剪参数
    * @param {Object} currentImage - 当前图片信息
    * @param {number} displayWidth - 显示宽度
@@ -23,30 +23,126 @@ class CropInteractionHandler {
    * @returns {Object} 交互状态信息
    */
   detectInteractionZone(mouseX, mouseY, cropParams, currentImage, displayWidth, displayHeight) {
-    // 转换为原图坐标进行判断
-    const originalCoords = CropCalculator.displayToOriginal(
-      mouseX, mouseY, currentImage, displayWidth, displayHeight
-    )
+    // 检查基本条件
+    if (!currentImage || !displayWidth || !displayHeight || cropParams.width <= 0 || cropParams.height <= 0) {
+      return {
+        zone: 'create',
+        handle: null,
+        cursor: 'crosshair'
+      }
+    }
     
-    const { x, y, width, height } = cropParams
-    const handleSize = 8 // 调整手柄的大小（像素）
+    // 计算裁剪区域在显示坐标系中的位置和大小
+    const scaleX = displayWidth / currentImage.width
+    const scaleY = displayHeight / currentImage.height
     
-    // 检查是否在调整手柄上
+    const displayCropX = cropParams.x * scaleX
+    const displayCropY = cropParams.y * scaleY
+    const displayCropWidth = cropParams.width * scaleX
+    const displayCropHeight = cropParams.height * scaleY
+    
+    const handleSize = 12 // 调整手柄的点击区域大小（显示坐标系）
+    
+    // 检查是否在调整手柄上（使用显示坐标）
     const handles = {
-      nw: { x: x - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
-      ne: { x: x + width - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
-      sw: { x: x - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
-      se: { x: x + width - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
-      n: { x: x + width/2 - handleSize/2, y: y - handleSize/2, width: handleSize, height: handleSize },
-      s: { x: x + width/2 - handleSize/2, y: y + height - handleSize/2, width: handleSize, height: handleSize },
-      w: { x: x - handleSize/2, y: y + height/2 - handleSize/2, width: handleSize, height: handleSize },
-      e: { x: x + width - handleSize/2, y: y + height/2 - handleSize/2, width: handleSize, height: handleSize }
+      nw: { x: displayCropX - handleSize/2, y: displayCropY - handleSize/2, width: handleSize, height: handleSize },
+      ne: { x: displayCropX + displayCropWidth - handleSize/2, y: displayCropY - handleSize/2, width: handleSize, height: handleSize },
+      sw: { x: displayCropX - handleSize/2, y: displayCropY + displayCropHeight - handleSize/2, width: handleSize, height: handleSize },
+      se: { x: displayCropX + displayCropWidth - handleSize/2, y: displayCropY + displayCropHeight - handleSize/2, width: handleSize, height: handleSize },
+      n: { x: displayCropX + displayCropWidth/2 - handleSize/2, y: displayCropY - handleSize/2, width: handleSize, height: handleSize },
+      s: { x: displayCropX + displayCropWidth/2 - handleSize/2, y: displayCropY + displayCropHeight - handleSize/2, width: handleSize, height: handleSize },
+      w: { x: displayCropX - handleSize/2, y: displayCropY + displayCropHeight/2 - handleSize/2, width: handleSize, height: handleSize },
+      e: { x: displayCropX + displayCropWidth - handleSize/2, y: displayCropY + displayCropHeight/2 - handleSize/2, width: handleSize, height: handleSize }
     }
     
     // 检查调整手柄
     for (const [handleName, handle] of Object.entries(handles)) {
-      if (originalCoords.x >= handle.x && originalCoords.x <= handle.x + handle.width &&
-          originalCoords.y >= handle.y && originalCoords.y <= handle.y + handle.height) {
+      if (mouseX >= handle.x && mouseX <= handle.x + handle.width &&
+          mouseY >= handle.y && mouseY <= handle.y + handle.height) {
+        return {
+          zone: 'resize',
+          handle: handleName,
+          cursor: this.getCursorForHandle(handleName)
+        }
+      }
+    }
+    
+    // 检查是否在裁剪区域内部（使用显示坐标）
+    if (mouseX >= displayCropX && mouseX <= displayCropX + displayCropWidth &&
+        mouseY >= displayCropY && mouseY <= displayCropY + displayCropHeight) {
+      return {
+        zone: 'move',
+        handle: null,
+        cursor: 'move'
+      }
+    }
+    
+    // 在裁剪区域外部
+    return {
+      zone: 'create',
+      handle: null,
+      cursor: 'crosshair'
+    }
+  }
+  
+  /**
+   * 检测考虑transform的鼠标位置相对于裁剪区域的状态
+   * @param {number} mouseX - 鼠标X坐标（相对于预览容器）
+   * @param {number} mouseY - 鼠标Y坐标（相对于预览容器）
+   * @param {Object} cropParams - 裁剪参数
+   * @param {Object} currentImage - 当前图片信息
+   * @param {number} displayWidth - 显示宽度
+   * @param {number} displayHeight - 显示高度
+   * @param {Object} transformState - transform状态
+   * @returns {Object} 交互状态信息
+   */
+  detectInteractionZoneWithTransform(mouseX, mouseY, cropParams, currentImage, displayWidth, displayHeight, transformState) {
+    // 检查基本条件
+    if (!currentImage || !displayWidth || !displayHeight || cropParams.width <= 0 || cropParams.height <= 0) {
+      return {
+        zone: 'create',
+        handle: null,
+        cursor: 'crosshair'
+      }
+    }
+    
+    // 使用CropCalculator的transform版本计算裁剪区域的实际显示位置和尺寸
+    const overlayStyle = CropCalculator.calculateOverlayStyleWithTransform(
+      currentImage, displayWidth, displayHeight, cropParams, transformState
+    )
+    
+    if (overlayStyle.display === 'none') {
+      return {
+        zone: 'create',
+        handle: null,
+        cursor: 'crosshair'
+      }
+    }
+    
+    // 提取位置和尺寸数值
+    const displayCropX = parseInt(overlayStyle.left)
+    const displayCropY = parseInt(overlayStyle.top)
+    const displayCropWidth = parseInt(overlayStyle.width)
+    const displayCropHeight = parseInt(overlayStyle.height)
+    
+    const handleSize = 12 // 调整手柄的点击区域大小
+    
+    // 检查是否在调整手柄上
+    const handles = {
+      nw: { x: displayCropX - handleSize/2, y: displayCropY - handleSize/2, width: handleSize, height: handleSize },
+      ne: { x: displayCropX + displayCropWidth - handleSize/2, y: displayCropY - handleSize/2, width: handleSize, height: handleSize },
+      sw: { x: displayCropX - handleSize/2, y: displayCropY + displayCropHeight - handleSize/2, width: handleSize, height: handleSize },
+      se: { x: displayCropX + displayCropWidth - handleSize/2, y: displayCropY + displayCropHeight - handleSize/2, width: handleSize, height: handleSize },
+      n: { x: displayCropX + displayCropWidth/2 - handleSize/2, y: displayCropY - handleSize/2, width: handleSize, height: handleSize },
+      s: { x: displayCropX + displayCropWidth/2 - handleSize/2, y: displayCropY + displayCropHeight - handleSize/2, width: handleSize, height: handleSize },
+      w: { x: displayCropX - handleSize/2, y: displayCropY + displayCropHeight/2 - handleSize/2, width: handleSize, height: handleSize },
+      e: { x: displayCropX + displayCropWidth - handleSize/2, y: displayCropY + displayCropHeight/2 - handleSize/2, width: handleSize, height: handleSize }
+    }
+    
+    // 检查调整手柄
+    for (const [handleName, handle] of Object.entries(handles)) {
+      if (mouseX >= handle.x && mouseX <= handle.x + handle.width &&
+          mouseY >= handle.y && mouseY <= handle.y + handle.height) {
         return {
           zone: 'resize',
           handle: handleName,
@@ -56,8 +152,8 @@ class CropInteractionHandler {
     }
     
     // 检查是否在裁剪区域内部
-    if (originalCoords.x >= x && originalCoords.x <= x + width &&
-        originalCoords.y >= y && originalCoords.y <= y + height) {
+    if (mouseX >= displayCropX && mouseX <= displayCropX + displayCropWidth &&
+        mouseY >= displayCropY && mouseY <= displayCropY + displayCropHeight) {
       return {
         zone: 'move',
         handle: null,
@@ -125,6 +221,39 @@ class CropInteractionHandler {
   }
   
   /**
+   * 开始考虑transform的拖拽操作
+   * @param {Object} interactionInfo - 交互信息
+   * @param {number} mouseX - 鼠标X坐标
+   * @param {number} mouseY - 鼠标Y坐标
+   * @param {Object} cropParams - 当前裁剪参数
+   * @param {Object} currentImage - 当前图片信息
+   * @param {number} displayWidth - 显示宽度
+   * @param {number} displayHeight - 显示高度
+   * @param {Object} transformState - transform状态
+   */
+  startDragWithTransform(interactionInfo, mouseX, mouseY, cropParams, currentImage, displayWidth, displayHeight, transformState) {
+    this.isDragging = true
+    this.interactionMode = interactionInfo.zone
+    this.resizeHandle = interactionInfo.handle
+    
+    // 记录起始位置（原图坐标，考虑transform）
+    const originalCoords = CropCalculator.displayToOriginalWithTransform(
+      mouseX, mouseY, currentImage, displayWidth, displayHeight, transformState
+    )
+    
+    this.dragStart = {
+      x: originalCoords.x,
+      y: originalCoords.y,
+      cropX: cropParams.x,
+      cropY: cropParams.y,
+      cropWidth: cropParams.width,
+      cropHeight: cropParams.height
+    }
+    
+    console.log('开始拖拽(with transform):', this.interactionMode, this.resizeHandle)
+  }
+  
+  /**
    * 更新拖拽操作
    * @param {number} mouseX - 当前鼠标X坐标
    * @param {number} mouseY - 当前鼠标Y坐标
@@ -138,6 +267,47 @@ class CropInteractionHandler {
     
     const currentCoords = CropCalculator.displayToOriginal(
       mouseX, mouseY, currentImage, displayWidth, displayHeight
+    )
+    
+    const deltaX = currentCoords.x - this.dragStart.x
+    const deltaY = currentCoords.y - this.dragStart.y
+    
+    let newCropParams = null
+    
+    switch (this.interactionMode) {
+      case 'create':
+        newCropParams = this.handleCreateDrag(currentCoords)
+        break
+      case 'move':
+        newCropParams = this.handleMoveDrag(deltaX, deltaY)
+        break
+      case 'resize':
+        newCropParams = this.handleResizeDrag(deltaX, deltaY)
+        break
+    }
+    
+    if (newCropParams) {
+      return CropCalculator.constrainCropParams(newCropParams, currentImage)
+    }
+    
+    return null
+  }
+  
+  /**
+   * 更新考虑transform的拖拽操作
+   * @param {number} mouseX - 当前鼠标X坐标
+   * @param {number} mouseY - 当前鼠标Y坐标
+   * @param {Object} currentImage - 当前图片信息
+   * @param {number} displayWidth - 显示宽度
+   * @param {number} displayHeight - 显示高度
+   * @param {Object} transformState - transform状态
+   * @returns {Object|null} 新的裁剪参数，如果没有变化则返回null
+   */
+  updateDragWithTransform(mouseX, mouseY, currentImage, displayWidth, displayHeight, transformState) {
+    if (!this.isDragging) return null
+    
+    const currentCoords = CropCalculator.displayToOriginalWithTransform(
+      mouseX, mouseY, currentImage, displayWidth, displayHeight, transformState
     )
     
     const deltaX = currentCoords.x - this.dragStart.x
@@ -238,6 +408,23 @@ class CropInteractionHandler {
       case 'e':
         newParams.width = cropWidth + deltaX
         break
+    }
+    
+    // 确保尺寸不会变成负数
+    if (newParams.width < 10) {
+      if (this.resizeHandle.includes('w')) {
+        // 左侧调整，调整x位置
+        newParams.x = cropX + cropWidth - 10
+      }
+      newParams.width = 10
+    }
+    
+    if (newParams.height < 10) {
+      if (this.resizeHandle.includes('n')) {
+        // 上侧调整，调整y位置
+        newParams.y = cropY + cropHeight - 10
+      }
+      newParams.height = 10
     }
     
     return newParams

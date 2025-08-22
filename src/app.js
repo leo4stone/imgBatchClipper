@@ -22,6 +22,17 @@ const app = createApp({
       // 交互处理器
       interactionHandler: new CropInteractionHandler(),
       
+      // transform状态
+      transformState: {
+        scale: 1,
+        originX: 50,
+        originY: 50,
+        translateX: 0,
+        translateY: 0,
+        transformStyle: 'scale(1)',
+        transformOriginStyle: '50% 50%'
+      },
+      
       // 输出设置
       outputSuffix: '_cropped',
       
@@ -52,7 +63,7 @@ const app = createApp({
     },
     
     imageScale() {
-      return this.displayManager.getScale()
+      return this.transformState.scale
     },
     
     canStartCrop() {
@@ -76,16 +87,20 @@ const app = createApp({
       
       return {
         width: this.displayWidth + 'px',
-        height: this.displayHeight + 'px'
+        height: this.displayHeight + 'px',
+        transform: this.transformState.transformStyle,
+        transformOrigin: this.transformState.transformOriginStyle,
+        transition: 'none' // 禁用过渡动画以获得流畅的滚轮缩放
       }
     },
     
     cropOverlayStyle() {
-      return CropCalculator.calculateOverlayStyle(
+      return CropCalculator.calculateOverlayStyleWithTransform(
         this.currentImage,
         this.displayWidth,
         this.displayHeight,
-        this.cropParams
+        this.cropParams,
+        this.transformState
       )
     }
   },
@@ -143,8 +158,9 @@ const app = createApp({
       if (selectedFile) {
         this.currentImage = selectedFile
         
-        // 重置缩放
+        // 重置缩放和transform
         this.displayManager.resetZoom()
+        this.transformState = this.displayManager.resetTransform()
         
         // 立即计算显示尺寸
         this.calculateDisplaySize()
@@ -209,8 +225,8 @@ const app = createApp({
       this.displayManager.setDisplaySize(displaySize.width, displaySize.height)
     },
     
-    // 开始裁剪拖拽
-    startCrop(event) {
+    // 统一的预览区域鼠标事件处理
+    handlePreviewMouseDown(event) {
       if (!this.currentImage) return
       
       const wrapper = this.$refs.previewWrapper
@@ -220,29 +236,47 @@ const app = createApp({
       const x = event.clientX - rect.left
       const y = event.clientY - rect.top
       
-      // 使用CropCalculator转换坐标
-      const originalCoords = CropCalculator.displayToOriginal(
-        x, y, this.currentImage, this.displayWidth, this.displayHeight
-      )
-      
-      this.cropParams.x = originalCoords.x
-      this.cropParams.y = originalCoords.y
-      
-      // 暂时使用简单的拖拽逻辑
-      this.interactionHandler.isDragging = true
-      this.interactionHandler.dragStart = { 
-        x: originalCoords.x, 
-        y: originalCoords.y 
+      // 首先检查是否点击了调整手柄
+      let interactionInfo = null
+      if (event.target && event.target.classList.contains('crop-handle')) {
+        const handle = event.target.getAttribute('data-handle')
+        interactionInfo = {
+          zone: 'resize',
+          handle: handle,
+          cursor: this.interactionHandler.getCursorForHandle(handle)
+        }
+        console.log('直接点击手柄:', handle)
+      } else {
+        // 否则通过位置检测交互区域（考虑transform）
+        interactionInfo = this.interactionHandler.detectInteractionZoneWithTransform(
+          x, y, this.cropParams, this.currentImage, this.displayWidth, this.displayHeight, this.transformState
+        )
       }
       
-      this.addStatusMessage(`开始选择裁剪区域: (${this.cropParams.x}, ${this.cropParams.y})`, 'info')
+      console.log('检测到交互区域:', interactionInfo)
+      
+      // 开始相应的交互（考虑transform）
+      this.interactionHandler.startDragWithTransform(
+        interactionInfo, x, y, this.cropParams, 
+        this.currentImage, this.displayWidth, this.displayHeight, this.transformState
+      )
+      
+      // 设置鼠标样式
+      wrapper.style.cursor = interactionInfo.cursor
+      
+      const actionText = {
+        'create': '创建新选区',
+        'move': '移动选区',
+        'resize': `调整选区大小 (${interactionInfo.handle})`
+      }
+      
+      this.addStatusMessage(actionText[interactionInfo.zone] || '开始操作', 'info')
       
       event.preventDefault()
     },
     
-    // 更新裁剪拖拽
-    updateCrop(event) {
-      if (!this.interactionHandler.isDragging || !this.currentImage) return
+    handlePreviewMouseMove(event) {
+      if (!this.currentImage) return
       
       const wrapper = this.$refs.previewWrapper
       if (!wrapper) return
@@ -251,27 +285,41 @@ const app = createApp({
       const x = event.clientX - rect.left
       const y = event.clientY - rect.top
       
-      const currentCoords = CropCalculator.displayToOriginal(
-        x, y, this.currentImage, this.displayWidth, this.displayHeight
-      )
-      
-      // 计算裁剪框参数
-      this.cropParams.x = Math.min(this.interactionHandler.dragStart.x, currentCoords.x)
-      this.cropParams.y = Math.min(this.interactionHandler.dragStart.y, currentCoords.y)
-      this.cropParams.width = Math.abs(currentCoords.x - this.interactionHandler.dragStart.x)
-      this.cropParams.height = Math.abs(currentCoords.y - this.interactionHandler.dragStart.y)
-      
-      // 使用CropCalculator约束参数
-      this.cropParams = CropCalculator.constrainCropParams(this.cropParams, this.currentImage)
-      
-      this.updateCropOverlay()
+      if (this.interactionHandler.isDraggingActive()) {
+        // 正在拖拽，更新操作（考虑transform）
+        const newCropParams = this.interactionHandler.updateDragWithTransform(
+          x, y, this.currentImage, this.displayWidth, this.displayHeight, this.transformState
+        )
+        
+        if (newCropParams) {
+          this.cropParams = newCropParams
+          this.updateCropOverlay()
+        }
+              } else {
+          // 悬停状态，更新鼠标样式
+          let interactionInfo = null
+          if (event.target && event.target.classList.contains('crop-handle')) {
+            const handle = event.target.getAttribute('data-handle')
+            interactionInfo = {
+              zone: 'resize',
+              handle: handle,
+              cursor: this.interactionHandler.getCursorForHandle(handle)
+            }
+          } else {
+            interactionInfo = this.interactionHandler.detectInteractionZoneWithTransform(
+              x, y, this.cropParams, this.currentImage, this.displayWidth, this.displayHeight, this.transformState
+            )
+          }
+          
+          wrapper.style.cursor = interactionInfo.cursor
+        }
     },
     
-    // 结束裁剪拖拽
-    endCrop(event) {
-      if (!this.interactionHandler.isDragging) return
+    handlePreviewMouseUp(event) {
+      if (!this.interactionHandler.isDraggingActive()) return
       
-      this.interactionHandler.isDragging = false
+      const mode = this.interactionHandler.getInteractionMode()
+      this.interactionHandler.endDrag()
       
       // 确保最小尺寸
       if (this.cropParams.width < 10) this.cropParams.width = 10
@@ -280,12 +328,78 @@ const app = createApp({
       // 最终约束检查
       this.cropParams = CropCalculator.constrainCropParams(this.cropParams, this.currentImage)
       
+      const actionText = {
+        'create': '选区创建完成',
+        'move': '选区移动完成',
+        'resize': '选区调整完成'
+      }
+      
       this.addStatusMessage(
-        `裁剪区域已设置: (${this.cropParams.x}, ${this.cropParams.y}) ${this.cropParams.width}×${this.cropParams.height}`, 
+        `${actionText[mode]}: (${this.cropParams.x}, ${this.cropParams.y}) ${this.cropParams.width}×${this.cropParams.height}`, 
         'success'
       )
       
       this.updateCropOverlay()
+      
+      // 重置鼠标样式
+      const wrapper = this.$refs.previewWrapper
+      if (wrapper) {
+        wrapper.style.cursor = 'crosshair'
+      }
+    },
+    
+    handlePreviewMouseLeave(event) {
+      if (this.interactionHandler.isDraggingActive()) {
+        this.handlePreviewMouseUp(event)
+      }
+    },
+    
+    // 裁剪区域鼠标按下事件（移动操作）
+    handleCropMouseDown(event) {
+      // 这个事件会冒泡到父级，由handlePreviewMouseDown处理
+      // 这里只是为了确保事件正确传递
+    },
+    
+    // 调整手柄鼠标按下事件
+    handleResizeStart(event, handle) {
+      // 事件会被 @mousedown.stop 阻止冒泡
+      // 手柄的resize操作会在detectInteractionZone中检测到
+      console.log('调整手柄被点击:', handle)
+    },
+    
+    // 滚轮缩放事件处理
+    handleWheel(event) {
+      if (!this.currentImage) return
+      
+      event.preventDefault()
+      
+      const wrapper = this.$refs.previewWrapper
+      if (!wrapper) return
+      
+      const rect = wrapper.getBoundingClientRect()
+      const mouseX = event.clientX - rect.left
+      const mouseY = event.clientY - rect.top
+      
+      // 计算缩放因子，向上滚动放大，向下滚动缩小
+      const scaleFactor = event.deltaY < 0 ? 1.1 : 1/1.1
+      
+      // 执行以鼠标位置为中心的缩放
+      this.transformState = this.displayManager.wheelZoomAtPoint(
+        scaleFactor, 
+        mouseX, 
+        mouseY, 
+        wrapper.clientWidth, 
+        wrapper.clientHeight
+      )
+      
+      // 更新裁剪覆盖层
+      this.updateCropOverlay()
+      
+      console.log('滚轮缩放完成:', {
+        scale: this.transformState.scale,
+        origin: `${this.transformState.originX}% ${this.transformState.originY}%`,
+        mouse: { x: mouseX, y: mouseY }
+      })
     },
     
     // 更新裁剪覆盖层
@@ -303,26 +417,22 @@ const app = createApp({
     
     // 缩放控制功能
     zoomIn() {
-      this.displayManager.zoom(1.2)
-      this.calculateDisplaySize()
+      this.transformState = this.displayManager.buttonZoom(1.2)
       this.updateCropOverlay()
     },
     
     zoomOut() {
-      this.displayManager.zoom(1/1.2)
-      this.calculateDisplaySize()
+      this.transformState = this.displayManager.buttonZoom(1/1.2)
       this.updateCropOverlay()
     },
     
     resetZoom() {
-      this.displayManager.resetZoom()
-      this.calculateDisplaySize()
+      this.transformState = this.displayManager.resetTransform()
       this.updateCropOverlay()
     },
     
     fitToWindow() {
-      this.displayManager.resetZoom()
-      this.calculateDisplaySize()
+      this.transformState = this.displayManager.resetTransform()
       this.updateCropOverlay()
     },
     
