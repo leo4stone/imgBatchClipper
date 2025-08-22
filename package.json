@@ -1,7 +1,7 @@
 {
-  "name": "imagemagickviewer",
+  "name": "imgbatchclipper",
   "version": "1.0.0",
-  "description": "一个基于Electron和Vue.js的图片查看器应用",
+  "description": "专业的图片批量裁剪工具，基于Electron和Vue.js开发",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
@@ -13,7 +13,9 @@
     "electron",
     "vue",
     "image",
-    "viewer"
+    "crop",
+    "batch",
+    "clipper"
   ],
   "author": "Your Name",
   "license": "MIT",
@@ -30,8 +32,8 @@
     "vue": "^3.3.4"
   },
   "build": {
-    "appId": "com.example.imagemagickviewer",
-    "productName": "ImageMagick Viewer",
+    "appId": "com.example.imgbatchclipper",
+    "productName": "imgBatchClipper",
     "directories": {
       "output": "dist"
     },

@@ -1,6 +1,6 @@
 const { createApp } = Vue
 
-// ImageMagick 批量裁剪应用
+// imgBatchClipper 图片批量裁剪应用
 const app = createApp({
   data() {
     return {
@@ -106,7 +106,7 @@ const app = createApp({
   },
   
   mounted() {
-    console.log('ImageMagick 批量裁剪工具已启动')
+    console.log('imgBatchClipper 图片批量裁剪工具已启动')
     this.addStatusMessage('应用已启动，请选择图片文件', 'info')
     
     // 检查ImageMagick是否可用

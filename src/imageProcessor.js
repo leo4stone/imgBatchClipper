@@ -4,7 +4,7 @@ const os = require('os')
 
 class ImageProcessor {
   constructor() {
-    this.outputDirectory = path.join(os.homedir(), 'Pictures', 'ImageMagick_Output')
+    this.outputDirectory = path.join(os.homedir(), 'Pictures', 'imgBatchClipper_Output')
     this.tempDirectory = path.join(os.tmpdir(), 'imagemagick_temp')
     this.progressCallback = null
     
