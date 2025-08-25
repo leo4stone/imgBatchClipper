@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>imgBatchClipper</title>
+    <link rel="icon" type="image/png" href="./favicon.png">
     <style>
         * {
             margin: 0;
@@ -60,8 +61,20 @@
         }
 
         .app-logo .logo-icon {
-            font-size: 24px;
+            width: 28px;
+            height: 28px;
             margin-right: 10px;
+            background-image: url('./logo.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        
+        /* 高分辨率显示器支持 */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 2dppx) {
+            .app-logo .logo-icon {
+                background-image: url('./logo@2x.png');
+            }
         }
 
         .app-logo .logo-text {
@@ -836,7 +849,7 @@
                     <!-- 应用Logo和语言切换 -->
                     <div class="app-logo">
                         <div class="logo-section">
-                            <div class="logo-icon">✂️</div>
+                            <div class="logo-icon"></div>
                             <div class="logo-text">{{ $t('app.name') }}</div>
                         </div>
                         

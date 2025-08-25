@@ -41,6 +41,19 @@
     "files": [
       "src/**/*",
       "node_modules/**/*"
-    ]
+    ],
+    "icon": "icons/icon",
+    "mac": {
+      "icon": "icons/icon.icns",
+      "category": "public.app-category.graphics-design"
+    },
+    "win": {
+      "icon": "icons/icon.ico",
+      "target": "nsis"
+    },
+    "linux": {
+      "icon": "icons/icon-512.png",
+      "category": "Graphics"
+    }
   }
 }

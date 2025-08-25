@@ -19,7 +19,7 @@ function createWindow() {
       contextIsolation: false,
       enableRemoteModule: true
     },
-    icon: path.join(__dirname, 'assets/icon.png'), // 可选的应用图标
+    icon: path.join(__dirname, '../icons/icon-256.png'), // 应用图标
     title: 'ImageMagick 批量图片裁剪工具'
   })
 
