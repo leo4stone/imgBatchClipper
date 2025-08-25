@@ -25,6 +25,26 @@ class ImageProcessor {
     }
   }
   
+  /**
+   * 确保指定的输出目录存在
+   * @param {string} outputPath - 输出目录路径
+   */
+  async ensureOutputDirectory(outputPath) {
+    try {
+      // 解析路径（支持相对路径和绝对路径）
+      const resolvedPath = path.resolve(outputPath)
+      
+      // 创建目录（递归创建）
+      await fs.mkdir(resolvedPath, { recursive: true })
+      
+      console.log('确保输出目录存在:', resolvedPath)
+      return resolvedPath
+    } catch (error) {
+      console.error('创建输出目录失败:', error)
+      throw new Error(`无法创建输出目录: ${outputPath} - ${error.message}`)
+    }
+  }
+  
   async setupProcessor() {
     // 尝试使用不同的图片处理库
     this.processorType = await this.detectBestProcessor()
@@ -201,15 +221,21 @@ class ImageProcessor {
     }
   }
   
-  async batchCropImages(files, cropParams, outputSuffix = '_cropped') {
+  async batchCropImages(files, cropParams, outputSuffix = '_cropped', outputDirectory = null) {
     const results = []
+    
+    console.log('批量裁剪开始:')
+    console.log('- 文件数量:', files.length)
+    console.log('- 输出目录设置:', outputDirectory || '使用默认目录')
+    console.log('- 文件后缀:', outputSuffix)
+    console.log('- 裁剪参数:', cropParams)
     
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       this.updateProgress(i, files.length, file.name)
       
       try {
-        const result = await this.cropSingleImage(file, cropParams, outputSuffix)
+        const result = await this.cropSingleImage(file, cropParams, outputSuffix, outputDirectory)
         results.push({
           success: true,
           inputFile: file.name,
@@ -227,14 +253,40 @@ class ImageProcessor {
     }
     
     this.updateProgress(files.length, files.length, '完成')
+    console.log('批量裁剪完成，结果:', results.filter(r => r.success).length, '成功,', results.filter(r => !r.success).length, '失败')
     return results
   }
   
-  async cropSingleImage(file, cropParams, outputSuffix) {
+  async cropSingleImage(file, cropParams, outputSuffix, outputDirectory = null) {
     const inputPath = file.path
     const parsedPath = path.parse(inputPath)
     const outputFileName = `${parsedPath.name}${outputSuffix}${parsedPath.ext}`
-    const outputPath = path.join(this.outputDirectory, outputFileName)
+    
+    // 确定最终输出目录
+    let finalOutputDir
+    if (outputDirectory) {
+      if (path.isAbsolute(outputDirectory)) {
+        // 绝对路径：直接使用
+        finalOutputDir = outputDirectory
+      } else {
+        // 相对路径：相对于原图片所在目录
+        finalOutputDir = path.resolve(parsedPath.dir, outputDirectory)
+      }
+    } else {
+      // 使用默认输出目录
+      finalOutputDir = this.outputDirectory
+    }
+    
+    const outputPath = path.join(finalOutputDir, outputFileName)
+    
+    console.log(`裁剪单个图片: ${file.name}`)
+    console.log(`- 输入路径: ${inputPath}`)
+    console.log(`- 最终输出目录: ${finalOutputDir}`)
+    console.log(`- 输出路径: ${outputPath}`)
+    console.log(`- 裁剪参数: x=${cropParams.x}, y=${cropParams.y}, w=${cropParams.width}, h=${cropParams.height}`)
+    
+    // 确保输出目录存在
+    await this.ensureOutputDirectory(finalOutputDir)
     
     try {
       switch (this.processorType) {

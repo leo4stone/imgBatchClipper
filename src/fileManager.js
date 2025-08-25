@@ -69,11 +69,57 @@ class FileManager {
   }
   
   /**
-   * 添加文件到列表
+   * 添加文件到列表（追加模式，防重复）
    * @param {Array} files - 文件数组
+   * @returns {Object} 添加结果统计
    */
   addFiles(files) {
-    this.selectedFiles = [...this.selectedFiles, ...files]
+    let addedCount = 0
+    let duplicateCount = 0
+    
+    for (const newFile of files) {
+      // 检查是否重复（基于文件名和大小）
+      const isDuplicate = this.selectedFiles.some(existingFile => 
+        existingFile.name === newFile.name && existingFile.size === newFile.size
+      )
+      
+      if (!isDuplicate) {
+        // 为每个文件添加独立的裁剪参数
+        newFile.cropParams = {
+          x: 0,
+          y: 0, 
+          width: 100,
+          height: 100
+        }
+        
+        this.selectedFiles.push(newFile)
+        addedCount++
+      } else {
+        duplicateCount++
+      }
+    }
+    
+    return {
+      total: files.length,
+      added: addedCount,
+      duplicates: duplicateCount
+    }
+  }
+  
+  /**
+   * 处理并追加新文件
+   * @param {FileList|Array} files - 文件列表
+   * @returns {Promise<Object>} 处理结果
+   */
+  async handleFileAddition(files) {
+    const processedFiles = await this.handleFileSelection(files)
+    const addResult = this.addFiles(processedFiles)
+    
+    return {
+      processedFiles,
+      addResult,
+      totalFiles: this.selectedFiles.length
+    }
   }
   
   /**
@@ -130,6 +176,149 @@ class FileManager {
    */
   getCurrentFileIndex() {
     return this.currentFileIndex
+  }
+  
+  /**
+   * 移除指定的文件
+   * @param {number|Array} indices - 要移除的文件索引（单个数字或数组）
+   * @returns {Object} 移除结果
+   */
+  removeFiles(indices) {
+    // 处理参数，统一为数组格式
+    const indexArray = Array.isArray(indices) ? indices : [indices]
+    
+    // 验证索引有效性
+    const validIndices = indexArray.filter(index => 
+      Number.isInteger(index) && index >= 0 && index < this.selectedFiles.length
+    )
+    
+    if (validIndices.length === 0) {
+      return { 
+        success: false, 
+        message: '没有有效的文件索引',
+        removed: 0,
+        totalFiles: this.selectedFiles.length
+      }
+    }
+    
+    // 按索引从大到小排序，避免删除时索引变化的问题
+    const sortedIndices = validIndices.sort((a, b) => b - a)
+    const removedFiles = []
+    
+    // 依次移除文件
+    for (const index of sortedIndices) {
+      const removedFile = this.selectedFiles[index]
+      
+      // 释放URL对象
+      if (removedFile.url) {
+        URL.revokeObjectURL(removedFile.url)
+      }
+      
+      // 从列表中移除
+      this.selectedFiles.splice(index, 1)
+      removedFiles.push(removedFile)
+    }
+    
+    // 调整当前文件索引
+    this.adjustCurrentFileIndex(sortedIndices)
+    
+    return { 
+      success: true, 
+      message: `已移除 ${removedFiles.length} 个文件`,
+      removed: removedFiles.length,
+      removedFiles,
+      newCurrentIndex: this.currentFileIndex,
+      totalFiles: this.selectedFiles.length
+    }
+  }
+  
+  /**
+   * 调整当前文件索引（移除文件后）
+   * @param {Array} removedIndices - 已移除的索引数组（从大到小排序）
+   */
+  adjustCurrentFileIndex(removedIndices) {
+    if (this.selectedFiles.length === 0) {
+      this.currentFileIndex = -1
+      return
+    }
+    
+    let adjustedIndex = this.currentFileIndex
+    
+    // 计算需要减少的索引数量
+    let reduction = 0
+    for (const removedIndex of removedIndices.reverse()) { // 从小到大处理
+      if (removedIndex < this.currentFileIndex) {
+        reduction++
+      } else if (removedIndex === this.currentFileIndex) {
+        // 当前文件被移除，选择合适的替代文件
+        adjustedIndex = Math.min(this.currentFileIndex, this.selectedFiles.length - 1)
+        reduction = 0 // 重置减少量，因为已经重新设置了索引
+        break
+      }
+    }
+    
+    this.currentFileIndex = Math.max(0, adjustedIndex - reduction)
+    
+    // 确保索引在有效范围内
+    if (this.currentFileIndex >= this.selectedFiles.length) {
+      this.currentFileIndex = this.selectedFiles.length - 1
+    }
+  }
+  
+  /**
+   * 初始化文件的裁剪参数
+   * @param {Object} file - 文件对象
+   * @param {number} defaultSize - 默认裁剪尺寸
+   */
+  initializeFileCropParams(file, defaultSize = 100) {
+    if (file.width && file.height) {
+      // 计算中心位置的默认裁剪区域
+      const cropSize = Math.min(file.width, file.height, defaultSize)
+      file.cropParams = {
+        x: Math.max(0, Math.floor((file.width - cropSize) / 2)),
+        y: Math.max(0, Math.floor((file.height - cropSize) / 2)),
+        width: cropSize,
+        height: cropSize
+      }
+    } else {
+      // 备用默认值
+      file.cropParams = {
+        x: 0,
+        y: 0,
+        width: defaultSize,
+        height: defaultSize
+      }
+    }
+  }
+  
+  /**
+   * 获取当前文件的裁剪参数
+   * @returns {Object|null} 裁剪参数
+   */
+  getCurrentFileCropParams() {
+    const currentFile = this.getCurrentFile()
+    return currentFile ? currentFile.cropParams : null
+  }
+  
+  /**
+   * 更新当前文件的裁剪参数
+   * @param {Object} newCropParams - 新的裁剪参数
+   */
+  updateCurrentFileCropParams(newCropParams) {
+    const currentFile = this.getCurrentFile()
+    if (currentFile) {
+      currentFile.cropParams = { ...newCropParams }
+    }
+  }
+  
+  /**
+   * 更新所有文件的裁剪参数（共用模式）
+   * @param {Object} newCropParams - 新的裁剪参数
+   */
+  updateAllFilesCropParams(newCropParams) {
+    this.selectedFiles.forEach(file => {
+      file.cropParams = { ...newCropParams }
+    })
   }
   
   /**

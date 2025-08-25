@@ -33,6 +33,61 @@ function createWindow() {
 
   // 启用remote模块for this window
   require('@electron/remote/main').enable(mainWindow.webContents)
+  
+  // 设置右键上下文菜单
+  mainWindow.webContents.on('context-menu', (event, params) => {
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: '复制',
+        accelerator: 'CmdOrCtrl+C',
+        enabled: params.selectionText.length > 0,
+        click: () => {
+          mainWindow.webContents.copy()
+        }
+      },
+      {
+        label: '粘贴',
+        accelerator: 'CmdOrCtrl+V',
+        enabled: params.isEditable,
+        click: () => {
+          mainWindow.webContents.paste()
+        }
+      },
+      {
+        label: '剪切',
+        accelerator: 'CmdOrCtrl+X',
+        enabled: params.isEditable && params.selectionText.length > 0,
+        click: () => {
+          mainWindow.webContents.cut()
+        }
+      },
+      {
+        label: '全选',
+        accelerator: 'CmdOrCtrl+A',
+        enabled: params.isEditable || params.selectionText.length > 0,
+        click: () => {
+          mainWindow.webContents.selectAll()
+        }
+      },
+      { type: 'separator' },
+      {
+        label: '重新加载',
+        accelerator: 'CmdOrCtrl+R',
+        click: () => {
+          mainWindow.webContents.reload()
+        }
+      },
+      {
+        label: '开发者工具',
+        accelerator: 'F12',
+        click: () => {
+          mainWindow.webContents.toggleDevTools()
+        }
+      }
+    ])
+    
+    contextMenu.popup()
+  })
 
   // 当窗口被关闭时触发
   mainWindow.on('closed', () => {
@@ -58,6 +113,42 @@ function createWindow() {
           click: () => {
             app.quit()
           }
+        }
+      ]
+    },
+    {
+      label: '编辑',
+      submenu: [
+        {
+          label: '撤销',
+          accelerator: 'CmdOrCtrl+Z',
+          role: 'undo'
+        },
+        {
+          label: '重做',
+          accelerator: 'Shift+CmdOrCtrl+Z',
+          role: 'redo'
+        },
+        { type: 'separator' },
+        {
+          label: '剪切',
+          accelerator: 'CmdOrCtrl+X',
+          role: 'cut'
+        },
+        {
+          label: '复制',
+          accelerator: 'CmdOrCtrl+C',
+          role: 'copy'
+        },
+        {
+          label: '粘贴',
+          accelerator: 'CmdOrCtrl+V',
+          role: 'paste'
+        },
+        {
+          label: '全选',
+          accelerator: 'CmdOrCtrl+A',
+          role: 'selectall'
         }
       ]
     },
@@ -162,9 +253,14 @@ ipcMain.handle('select-files', async () => {
   return []
 })
 
-ipcMain.handle('batch-crop', async (event, { files, cropParams, outputSuffix }) => {
+ipcMain.handle('batch-crop', async (event, { files, cropParams, outputSuffix, outputDirectory }) => {
   try {
-    const results = await imageProcessor.batchCropImages(files, cropParams, outputSuffix)
+    console.log('接收到批量裁剪请求:')
+    console.log('- 文件数量:', files.length)
+    console.log('- 输出目录:', outputDirectory)
+    console.log('- 文件后缀:', outputSuffix)
+    
+    const results = await imageProcessor.batchCropImages(files, cropParams, outputSuffix, outputDirectory)
     return { success: true, results }
   } catch (error) {
     console.error('批量裁剪失败:', error)

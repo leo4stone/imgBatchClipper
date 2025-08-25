@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>imgBatchClipper - 图片批量裁剪工具</title>
+    <title>imgBatchClipper</title>
     <style>
         * {
             margin: 0;
@@ -47,9 +47,16 @@
         .app-logo {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             margin-bottom: 15px;
             padding-bottom: 15px;
             border-bottom: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
         }
 
         .app-logo .logo-icon {
@@ -61,6 +68,72 @@
             font-size: 18px;
             font-weight: bold;
             color: #333;
+        }
+        
+        .language-switcher {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .language-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .language-btn:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 6px rgba(0,123,255,0.15);
+        }
+        
+        .language-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 120px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        
+        .language-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s ease;
+            font-size: 13px;
+        }
+        
+        .language-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .language-item.active {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .language-flag {
+            font-size: 14px;
+        }
+        
+        .language-name {
+            font-weight: 500;
         }
 
         .panel-title {
@@ -176,6 +249,38 @@
             font-size: 12px;
             color: #666;
         }
+        
+        .file-remove-btn {
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 14px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.2s ease;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+        
+        .file-item:hover .file-remove-btn {
+            opacity: 1;
+        }
+        
+        .file-remove-btn:hover {
+            background: #ff4757;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .file-remove-btn:active {
+            transform: scale(0.95);
+        }
 
         .file-thumbnail {
             width: 40px;
@@ -275,13 +380,90 @@
             white-space: nowrap;
         }
 
-        .zoom-controls {
+        .preview-controls {
             position: absolute;
             top: 10px;
-            right: 10px;
+            left: 10px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .crop-controls {
             display: flex;
             gap: 5px;
-            z-index: 20;
+        }
+        
+        .zoom-controls {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .control-btn {
+            height: 32px;
+            border: 1px solid #ddd;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0 8px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: #007bff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .control-btn:active {
+            background: rgba(240, 240, 240, 0.95);
+            transform: translateY(1px);
+        }
+        
+        .reset-btn {
+            color: #28a745;
+            border-color: #28a745;
+        }
+        
+        .reset-btn:hover {
+            background: rgba(40, 167, 69, 0.1);
+            border-color: #28a745;
+        }
+        
+                .btn-text {
+            font-weight: 500;
+        }
+        
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+        
+        .radio-item input[type="radio"] {
+            margin: 0;
+            cursor: pointer;
+        }
+        
+        .radio-text {
+            cursor: pointer;
+            line-height: 1.2;
         }
 
         .zoom-btn {
@@ -373,6 +555,53 @@
             display: flex;
             gap: 8px;
             align-items: center;
+        }
+        
+        .directory-buttons {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        
+        .directory-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            min-width: 140px;
+            margin-top: 2px;
+        }
+        
+        .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .dropdown-item:active {
+            background-color: #e9ecef;
         }
 
         .output-settings-row .form-input {
@@ -529,10 +758,71 @@
             -webkit-user-select: text;
         }
 
-        /* 保持按钮不可选择 */
-        .btn, .file-button {
-            user-select: none;
-            -webkit-user-select: none;
+                  .form-subgroup {
+              margin-bottom: 12px;
+          }
+          
+          .form-sublabel {
+              display: block;
+              margin-bottom: 4px;
+              font-size: 12px;
+              font-weight: 500;
+              color: #555;
+          }
+          
+          .form-hint {
+              font-size: 11px;
+              color: #999;
+              margin-top: 4px;
+              line-height: 1.3;
+          }
+
+          /* 保持按钮不可选择 */
+          .btn, .file-button {
+              user-select: none;
+              -webkit-user-select: none;
+          }
+        
+        /* 拖拽覆盖层样式 */
+        .drag-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 123, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .drag-content {
+            text-align: center;
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px dashed rgba(255, 255, 255, 0.8);
+            max-width: 400px;
+        }
+        
+        .drag-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .drag-text {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        
+        .drag-subtext {
+            font-size: 14px;
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -543,13 +833,32 @@
             <!-- 左侧面板 - 文件选择 -->
             <div class="left-panel">
                 <div class="panel-header">
-                    <!-- 应用Logo -->
+                    <!-- 应用Logo和语言切换 -->
                     <div class="app-logo">
-                        <div class="logo-icon">✂️</div>
-                        <div class="logo-text">imgBatchClipper</div>
+                        <div class="logo-section">
+                            <div class="logo-icon">✂️</div>
+                            <div class="logo-text">{{ $t('app.name') }}</div>
+                        </div>
+                        
+                        <!-- 语言切换按钮 -->
+                        <div class="language-switcher" @click.stop>
+                            <button class="language-btn" @click="toggleLanguageMenu" :title="currentLanguage.name">
+                                {{ currentLanguage.flag }}
+                            </button>
+                            <div v-if="showLanguageMenu" class="language-dropdown">
+                                <div v-for="lang in availableLanguages" 
+                                     :key="lang.code"
+                                     class="language-item"
+                                     :class="{ active: currentLanguage.code === lang.code }"
+                                     @click="switchToLanguage(lang.code)">
+                                    <span class="language-flag">{{ lang.flag }}</span>
+                                    <span class="language-name">{{ lang.name }}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="panel-title">选择图片文件</div>
+                    <div class="panel-title">{{ $t('file.selectButton') }}</div>
                     <div class="file-selection-row">
                         <div class="file-input-wrapper">
                             <input type="file" 
@@ -559,10 +868,10 @@
                                    accept="image/*"
                                    @change="handleFileSelect">
                             <label for="fileInput" class="file-button">
-                                📁 选择图片文件
+                                📁 {{ $t('file.selectButton') }}
                             </label>
                         </div>
-                        <button class="icon-btn danger" @click="clearAll" title="清空所有文件">
+                        <button class="icon-btn danger" @click="clearAll" :title="$t('file.clearButton')">
                             🗑️
                         </button>
                     </div>
@@ -570,9 +879,9 @@
                 
                 <div class="file-list">
                     <div v-if="selectedFiles.length === 0" class="no-image">
-                        <p>还没有选择图片文件</p>
+                        <p>{{ $t('file.noFiles') }}</p>
                         <p style="font-size: 12px; margin-top: 10px; color: #999;">
-                            支持 JPG, PNG, GIF, BMP 等格式
+                            {{ $t('file.supportedFormats') }}
                         </p>
                     </div>
                     
@@ -586,6 +895,11 @@
                             <div class="file-name">{{ file.name }}</div>
                             <div class="file-size">{{ formatFileSize(file.size) }}</div>
                         </div>
+                        <button class="file-remove-btn" 
+                                @click.stop="removeFile(index)"
+                                :title="$t('file.removeTooltip')">
+                            ✕
+                        </button>
                     </div>
                 </div>
             </div>
@@ -595,9 +909,9 @@
                 <div class="preview-container" ref="previewContainer">
                     <!-- 无图片提示 -->
                     <div v-if="!currentImage" class="no-image">
-                        <p>请先选择图片文件</p>
+                        <p>{{ $t('preview.noImage') }}</p>
                         <p style="font-size: 14px; margin-top: 10px; color: #999;">
-                            图片将在这里显示，您可以通过拖拽设置裁剪区域
+                            {{ $t('preview.instruction') }}
                         </p>
                     </div>
                     
@@ -637,22 +951,33 @@
                         </div>
                     </div>
                     
-                    <!-- 缩放控制 -->
-                    <div v-if="currentImage" class="zoom-controls">
-                        <button class="zoom-btn" @click="zoomOut" title="缩小">−</button>
-                        <button class="zoom-btn" @click="resetZoom" title="重置">⌂</button>
-                        <button class="zoom-btn" @click="zoomIn" title="放大">+</button>
-                        <button class="zoom-btn" @click="fitToWindow" title="适应窗口">⬛</button>
+                    <!-- 预览控制区域 -->
+                    <div v-if="currentImage" class="preview-controls">
+                        <!-- 缩放控制 -->
+                        <div class="zoom-controls">
+                            <button class="zoom-btn" @click="zoomOut" :title="$t('zoom.zoomOut')">−</button>
+                            <button class="zoom-btn" @click="resetZoom" :title="$t('zoom.reset')">⌂</button>
+                            <button class="zoom-btn" @click="zoomIn" :title="$t('zoom.zoomIn')">+</button>
+                            <button class="zoom-btn" @click="fitToWindow" :title="$t('zoom.fitWindow')">⬛</button>
+                        </div>
+                        
+                        <!-- 裁剪控制 -->
+                        <div class="crop-controls">
+                            <button class="control-btn reset-btn" @click="resetCropToCenter" :title="$t('crop.resetTooltip')">
+                                <span>↻</span>
+                                <span class="btn-text">{{ $t('crop.resetButton') }}</span>
+                            </button>
+                        </div>
                     </div>
                     
                     <!-- 缩放信息 -->
                     <div v-if="currentImage" class="zoom-info">
-                        {{ Math.round(transformState.scale * 100) }}% | {{ displayWidth }}×{{ displayHeight }}
+                        {{ Math.round(transformState.scale * 100) }}% | {{ currentImage.width }}×{{ currentImage.height }}
                     </div>
                     
                     <!-- 调试按钮 -->
                     <div v-if="currentImage" class="debug-controls">
-                        <button class="zoom-btn" @click="forceRefreshDisplay" title="强制刷新显示">
+                        <button class="zoom-btn" @click="forceRefreshDisplay" :title="$t('debug.forceRefresh')">
                             🔄
                         </button>
                     </div>
@@ -663,10 +988,32 @@
             <div class="right-panel">
                 <div class="params-form">
                     <div class="form-group">
-                        <label class="form-label">裁剪参数</label>
+                        <label class="form-label">{{ $t('crop.title') }}</label>
+                        
+                        <!-- 裁剪模式选择 -->
+                        <div class="form-subgroup">
+                            <label class="form-sublabel">{{ $t('crop.mode') }}</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" 
+                                           v-model="cropMode" 
+                                           value="shared"
+                                           @change="onCropModeChange">
+                                    <span class="radio-text">{{ $t('crop.modeShared') }}</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" 
+                                           v-model="cropMode" 
+                                           value="individual"
+                                           @change="onCropModeChange">
+                                    <span class="radio-text">{{ $t('crop.modeIndividual') }}</span>
+                                </label>
+                            </div>
+                        </div>
+                        
                         <div class="input-group">
                             <div>
-                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">X坐标</label>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">{{ $t('crop.xCoord') }}</label>
                                 <input type="number" 
                                        class="form-input" 
                                        v-model.number="cropParams.x"
@@ -674,7 +1021,7 @@
                                        min="0">
                             </div>
                             <div>
-                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">Y坐标</label>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">{{ $t('crop.yCoord') }}</label>
                                 <input type="number" 
                                        class="form-input" 
                                        v-model.number="cropParams.y"
@@ -687,7 +1034,7 @@
                     <div class="form-group">
                         <div class="input-group">
                             <div>
-                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">宽度</label>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">{{ $t('crop.width') }}</label>
                                 <input type="number" 
                                        class="form-input" 
                                        v-model.number="cropParams.width"
@@ -695,7 +1042,7 @@
                                        min="1">
                             </div>
                             <div>
-                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">高度</label>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 3px;">{{ $t('crop.height') }}</label>
                                 <input type="number" 
                                        class="form-input" 
                                        v-model.number="cropParams.height"
@@ -706,39 +1053,57 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">输出设置</label>
-                        <div class="output-settings-row">
+                        <label class="form-label">{{ $t('output.title') }}</label>
+                        
+                        <!-- 输出目录设置 -->
+                        <div class="form-subgroup">
+                            <label class="form-sublabel">{{ $t('output.directory') }}</label>
+                            <div class="output-settings-row">
+                                <input type="text" 
+                                       class="form-input" 
+                                       v-model="outputDirectory"
+                                       :placeholder="$t('output.directoryPlaceholder')">
+                                <div class="directory-buttons">
+                                    <div class="directory-dropdown" @click.stop>
+                                        <button class="icon-btn" @click="toggleDirectoryMenu" :title="$t('output.setDirectory')">
+                                            ⚙️
+                                        </button>
+                                        <div v-if="showDirectoryMenu" class="dropdown-menu">
+                                            <div class="dropdown-item" @click="setToOriginalFolder">
+                                                📂 {{ $t('output.originalFolder') }}
+                                            </div>
+                                            <div class="dropdown-item" @click="selectCustomDirectory">
+                                                📁 {{ $t('output.customFolder') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button v-if="isAbsolutePath" class="icon-btn" @click="openOutputFolder" :title="$t('output.openFolder')">
+                                        📁
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-hint">
+                                {{ $t('output.directoryHint') }}
+                            </div>
+                        </div>
+                        
+                        <!-- 文件后缀设置 -->
+                        <div class="form-subgroup">
+                            <label class="form-sublabel">{{ $t('output.suffix') }}</label>
                             <input type="text" 
                                    class="form-input" 
                                    v-model="outputSuffix"
-                                   placeholder="输出文件后缀 (例如: _cropped)">
-                            <button class="icon-btn" @click="openOutputFolder" title="打开输出文件夹">
-                                📁
-                            </button>
+                                   :placeholder="$t('output.suffixPlaceholder')">
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">当前图片信息</label>
-                        <div v-if="currentImage" style="font-size: 12px; color: #666;">
-                            <div>尺寸: {{ currentImage.width }} × {{ currentImage.height }}</div>
-                            <div>文件: {{ currentImage.name }}</div>
-                        </div>
-                        <div v-else style="font-size: 12px; color: #999;">
-                            未选择图片
-                        </div>
-                    </div>
+
                     
                     <!-- 操作按钮 -->
                     <div class="action-buttons">
                         <button class="btn primary" @click="startBatchCrop" :disabled="!canStartCrop">
                             <span>{{ isProcessing ? '🔄' : '✂️' }}</span>
-                            {{ isProcessing ? '处理中...' : '开始批量裁剪' }}
-                        </button>
-                        
-                        <button class="btn secondary" @click="resetCropToCenter" v-if="currentImage">
-                            <span>↻</span>
-                            重置裁剪区域
+                            {{ isProcessing ? $t('action.processing') : $t('action.startCrop') }}
                         </button>
                     </div>
                 </div>
@@ -746,7 +1111,7 @@
                 <!-- 进度显示 -->
                 <div class="progress-container">
                     <div class="form-group">
-                        <label class="form-label">处理进度</label>
+                        <label class="form-label">{{ $t('progress.title') }}</label>
                         <div class="progress-bar">
                             <div class="progress-fill" :style="{ width: progress + '%' }"></div>
                         </div>
@@ -763,16 +1128,28 @@
                 </div>
             </div>
         </div>
+        
+        <!-- 拖拽提示覆盖层 -->
+        <div v-if="isDragOver" class="drag-overlay">
+            <div class="drag-content">
+                <div class="drag-icon">📁</div>
+                <div class="drag-text">{{ $t('drag.instruction') }}</div>
+                <div class="drag-subtext">{{ $t('drag.multiple') }}</div>
+            </div>
+        </div>
     </div>
 
     <!-- 引入Vue.js -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 引入Vue I18n -->
+    <script src="https://unpkg.com/vue-i18n@9/dist/vue-i18n.global.js"></script>
     
     <!-- 引入模块 -->
     <script src="cropCalculator.js"></script>
     <script src="imageDisplayManager.js"></script>
     <script src="cropInteractionHandler.js"></script>
     <script src="fileManager.js"></script>
+    <script src="i18n.js"></script>
     
     <!-- 引入主应用 -->
     <script src="app.js"></script>
